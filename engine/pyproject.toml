@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "engine"
+version = "0.1.0"
+description = ""
+authors = ["AB <bolton.andrew@digital.mod.uk>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = {extras = ["all"], version = "^0.115.12"}
+uvicorn = "^0.34.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
