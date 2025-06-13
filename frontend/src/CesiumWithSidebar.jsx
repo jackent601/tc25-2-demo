@@ -7,6 +7,8 @@ import {
     PolygonHierarchy,
 } from 'cesium/Cesium.js';
 import 'cesium/Widgets/widgets.css';
+import { ClipLoader } from 'react-spinners';
+// import { Circles } from 'react-loader-spinner';
 
 // export default function CesiumWithSidebar() {
 //   const containerRef = useRef(null);
@@ -75,6 +77,7 @@ export default function CesiumWithSidebar() {
     const [selected, setSelected] = useState('');
     const dataSourceRef = useRef(null);
     const fillDataSourceRef = useRef(null);
+    const [isFilling, setIsFilling] = useState(false);
 
     useEffect(() => {
         const viewer = new Viewer(containerRef.current, {
@@ -83,6 +86,10 @@ export default function CesiumWithSidebar() {
             timeline: false,
         });
         viewerRef.current = viewer;
+        // Set initial camera view
+        viewerRef.current.camera.setView({
+        destination: Cartesian3.fromDegrees(-10.1, 66.9, 10000000.0) // [lon, lat, height in meters]
+        });
 
         // Fetch list of geojsons
         fetch("http://localhost:8000/geojson-names")
@@ -109,40 +116,47 @@ export default function CesiumWithSidebar() {
         });
 
         viewerRef.current.dataSources.add(ds);
-        viewerRef.current.zoomTo(ds);
+        // viewerRef.current.zoomTo(ds);
         dataSourceRef.current = ds;
     };
 
     const handleFill = async () => {
-        // Clear previous fill result if needed
-        if (fillDataSourceRef.current) {
-            viewerRef.current.dataSources.remove(fillDataSourceRef.current);
+        setIsFilling(true); // Start loading
+        try{
+            // Clear previous fill result if needed
+            if (fillDataSourceRef.current) {
+                viewerRef.current.dataSources.remove(fillDataSourceRef.current);
+            }
+
+            const res = await fetch('http://localhost:8000/fill');
+            const geojson = await res.json();
+
+            const ds = await GeoJsonDataSource.load(geojson);
+
+            // Apply styling based on 'entity' property
+            const entities = ds.entities.values;
+            for (let entity of entities) {
+                const entityType = entity.properties?.entity?.getValue();
+
+                // let fillColor = Color.LIGHTGRAY;
+                // if (entityType === 'A') fillColor = Color.RED.withAlpha(0.5);
+                // if (entityType === 'B') fillColor = Color.BLUE.withAlpha(0.5);
+
+                const fillColor = ENTITY_COLOR_MAP[entityType] || Cesium.Color.GRAY.withAlpha(0.4);
+
+                entity.polygon.material = fillColor;
+                entity.polygon.outline = true;
+                entity.polygon.outlineColor = Color.BLACK;
+            }
+
+            viewerRef.current.dataSources.add(ds);
+            // viewerRef.current.zoomTo(ds);
+            fillDataSourceRef.current = ds;
+        } catch (error) {
+            console.error("Error during fill:", error);
+        } finally {
+            setIsFilling(false); // Done loading
         }
-
-        const res = await fetch('http://localhost:8000/fill');
-        const geojson = await res.json();
-
-        const ds = await GeoJsonDataSource.load(geojson);
-
-        // Apply styling based on 'entity' property
-        const entities = ds.entities.values;
-        for (let entity of entities) {
-            const entityType = entity.properties?.entity?.getValue();
-
-            // let fillColor = Color.LIGHTGRAY;
-            // if (entityType === 'A') fillColor = Color.RED.withAlpha(0.5);
-            // if (entityType === 'B') fillColor = Color.BLUE.withAlpha(0.5);
-
-            const fillColor = ENTITY_COLOR_MAP[entityType] || Cesium.Color.GRAY.withAlpha(0.4);
-
-            entity.polygon.material = fillColor;
-            entity.polygon.outline = true;
-            entity.polygon.outlineColor = Color.BLACK;
-        }
-
-        viewerRef.current.dataSources.add(ds);
-        viewerRef.current.zoomTo(ds);
-        fillDataSourceRef.current = ds;
     };
 
     return (
@@ -177,8 +191,19 @@ export default function CesiumWithSidebar() {
                     Load
                 </button>
 
-                <button onClick={handleFill} style={{ width: '100%', marginBottom: '0.5rem' }}>
-                    Fill
+                <button onClick={handleFill} disabled={!selected || isFilling} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                   {isFilling ? "Filling..." : "Fill"}
+                   {/* {isFilling && <div style={{ marginTop: '0.5rem' }}>Processing fill data...</div>} */}
+                   {/* {isFilling && (
+                    <div style={{ marginTop: '1rem' }}>
+                        <Circles height={40} width={40} color="gray" />
+                    </div>
+                    )} */}
+                    {isFilling && (
+  <div style={{ marginTop: '1rem' }}>
+    <ClipLoader color="#666" size={35} />
+  </div>
+)}
                 </button>
 
                 <button style={{ width: '100%', marginBottom: '0.5rem' }}>

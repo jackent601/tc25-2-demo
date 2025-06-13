@@ -1,9 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-import os
+import os, json, time
 import geopandas as gpd
-import json
 
 app = FastAPI()
 
@@ -121,6 +120,7 @@ def get_polygon():
 @app.get("/fill")
 def run_fill_operation():
     # Your fill logic here — we'll mock it for now
+    time.sleep(2)
     gdf = gpd.GeoDataFrame.from_features([
         {
             "type": "Feature",
