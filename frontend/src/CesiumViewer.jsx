@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { Viewer } from 'cesium/Cesium.js';
 import 'cesium/Widgets/widgets.css';
+// import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 export default function CesiumViewer() {
   const viewerRef = useRef(null);

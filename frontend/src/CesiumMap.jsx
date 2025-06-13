@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import Cesium from "cesium/Cesium";
+import Cesium from "cesium/Cesium.js";
 import "cesium/Widgets/widgets.css";
 
 const CesiumMap = () => {
