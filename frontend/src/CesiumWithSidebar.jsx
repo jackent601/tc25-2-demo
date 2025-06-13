@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Viewer,
-  Cartesian3,
-  Color,
-  GeoJsonDataSource,
-  PolygonHierarchy,
-}from 'cesium/Cesium.js';
+    Viewer,
+    Cartesian3,
+    Color,
+    GeoJsonDataSource,
+    PolygonHierarchy,
+} from 'cesium/Cesium.js';
 import 'cesium/Widgets/widgets.css';
 
 // export default function CesiumWithSidebar() {
@@ -61,92 +61,136 @@ import 'cesium/Widgets/widgets.css';
 //   );
 // }
 
+const ENTITY_COLOR_MAP = {
+    A: Color.RED.withAlpha(0.5),
+    B: Color.BLUE.withAlpha(0.5),
+    C: Color.GREEN.withAlpha(0.5),
+};
+
+
 export default function CesiumWithSidebar() {
-  const containerRef = useRef(null);
-  const viewerRef = useRef(null);
-  const [geojsonList, setGeojsonList] = useState([]);
-  const [selected, setSelected] = useState('');
-  const dataSourceRef = useRef(null);
+    const containerRef = useRef(null);
+    const viewerRef = useRef(null);
+    const [geojsonList, setGeojsonList] = useState([]);
+    const [selected, setSelected] = useState('');
+    const dataSourceRef = useRef(null);
+    const fillDataSourceRef = useRef(null);
 
-  useEffect(() => {
-    const viewer = new Viewer(containerRef.current, {
-      shouldAnimate: true,
-      baseLayerPicker: false,
-      timeline: false,
-    });
-    viewerRef.current = viewer;
+    useEffect(() => {
+        const viewer = new Viewer(containerRef.current, {
+            shouldAnimate: true,
+            baseLayerPicker: false,
+            timeline: false,
+        });
+        viewerRef.current = viewer;
 
-    // Fetch list of geojsons
-    fetch("http://localhost:8000/geojson-names")
-      .then(res => res.json())
-      .then(setGeojsonList);
+        // Fetch list of geojsons
+        fetch("http://localhost:8000/geojson-names")
+            .then(res => res.json())
+            .then(setGeojsonList);
 
-    return () => viewer.destroy();
-  }, []);
+        return () => viewer.destroy();
+    }, []);
 
-  const handleLoad = async () => {
-    if (!selected) return;
+    const handleLoad = async () => {
+        if (!selected) return;
 
-    // Clear previous layer
-    if (dataSourceRef.current) {
-      viewerRef.current.dataSources.remove(dataSourceRef.current);
-    }
+        // Clear previous layer
+        if (dataSourceRef.current) {
+            viewerRef.current.dataSources.remove(dataSourceRef.current);
+        }
 
-    // Load selected GeoJSON
-    const url = `http://localhost:8000/geojson?name=${selected}`;
-    const ds = await GeoJsonDataSource.load(url, {
-      stroke: Color.BLACK,
-      fill: Color.CYAN.withAlpha(0.5),
-      strokeWidth: 2,
-    });
+        // Load selected GeoJSON
+        const url = `http://localhost:8000/geojson?name=${selected}`;
+        const ds = await GeoJsonDataSource.load(url, {
+            stroke: Color.BLACK,
+            fill: Color.CYAN.withAlpha(0.5),
+            strokeWidth: 2,
+        });
 
-    viewerRef.current.dataSources.add(ds);
-    viewerRef.current.zoomTo(ds);
-    dataSourceRef.current = ds;
-  };
+        viewerRef.current.dataSources.add(ds);
+        viewerRef.current.zoomTo(ds);
+        dataSourceRef.current = ds;
+    };
 
-  return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+    const handleFill = async () => {
+        // Clear previous fill result if needed
+        if (fillDataSourceRef.current) {
+            viewerRef.current.dataSources.remove(fillDataSourceRef.current);
+        }
 
-      <div
-        style={{
-          position: 'absolute',
-          top: '1rem',
-          left: '1rem',
-          width: '260px',
-          background: 'rgba(255,255,255,0.95)',
-          padding: '1rem',
-          borderRadius: '8px',
-          zIndex: 10,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
-        }}
-      >
-        <h3>GeoJSON Viewer</h3>
-        <select
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          style={{ width: '100%', marginBottom: '0.5rem' }}
-        >
-          <option value="">Select layer</option>
-          {geojsonList.map(name => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
-        <button onClick={handleLoad} style={{ width: '100%', marginBottom: '0.5rem' }}>
-          Load
-        </button>
+        const res = await fetch('http://localhost:8000/fill');
+        const geojson = await res.json();
 
-         <button style={{ width: '100%', marginBottom: '0.5rem' }}>
-           placeholder 1
-         </button>
+        const ds = await GeoJsonDataSource.load(geojson);
 
-         <button style={{ width: '100%', marginBottom: '0.5rem' }}>
-           placeholder 1
-         </button>
+        // Apply styling based on 'entity' property
+        const entities = ds.entities.values;
+        for (let entity of entities) {
+            const entityType = entity.properties?.entity?.getValue();
 
-         <button style={{ width: '100%' }}>placeholder 1</button>
-      </div>
-    </div>
-  );
+            // let fillColor = Color.LIGHTGRAY;
+            // if (entityType === 'A') fillColor = Color.RED.withAlpha(0.5);
+            // if (entityType === 'B') fillColor = Color.BLUE.withAlpha(0.5);
+
+            const fillColor = ENTITY_COLOR_MAP[entityType] || Cesium.Color.GRAY.withAlpha(0.4);
+
+            entity.polygon.material = fillColor;
+            entity.polygon.outline = true;
+            entity.polygon.outlineColor = Color.BLACK;
+        }
+
+        viewerRef.current.dataSources.add(ds);
+        viewerRef.current.zoomTo(ds);
+        fillDataSourceRef.current = ds;
+    };
+
+    return (
+        <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+            <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+
+            <div
+                style={{
+                    position: 'absolute',
+                    top: '1rem',
+                    left: '1rem',
+                    width: '260px',
+                    background: 'rgba(255,255,255,0.95)',
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    zIndex: 10,
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+                }}
+            >
+                <h3>GeoJSON Viewer</h3>
+                <select
+                    value={selected}
+                    onChange={(e) => setSelected(e.target.value)}
+                    style={{ width: '100%', marginBottom: '0.5rem' }}
+                >
+                    <option value="">Select layer</option>
+                    {geojsonList.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                    ))}
+                </select>
+                <button onClick={handleLoad} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    Load
+                </button>
+
+                <button onClick={handleFill} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    Fill
+                </button>
+
+                <button style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    placeholder 1
+                </button>
+
+                <button style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    placeholder 1
+                </button>
+
+                <button style={{ width: '100%' }}>placeholder 1</button>
+            </div>
+        </div>
+    );
 }
