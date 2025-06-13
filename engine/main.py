@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+import os
 
 app = FastAPI()
 
@@ -10,6 +12,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+GEOJSON_DIR = "geojson"
+
+@app.get("/geojson-names")
+def list_geojson_files():
+    files = [f for f in os.listdir(GEOJSON_DIR) if f.endswith(".geojson")]
+    return [os.path.splitext(f)[0] for f in files]  # return names without extension
+
+@app.get("/geojson")
+def get_geojson(name: str):
+    path = os.path.join(GEOJSON_DIR, f"{name}.geojson")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="GeoJSON not found")
+    return FileResponse(path, media_type="application/geo+json")
 
 @app.get("/polygons")
 async def get_polygons():
