@@ -1,26 +1,3 @@
-// import React from 'react'
-// import ReactDOM from 'react-dom/client'
-// import CesiumMap from './CesiumMap'
-// import 'cesium/Widgets/widgets.css'
-
-// ReactDOM.createRoot(document.getElementById('root')).render(
-//   <React.StrictMode>
-//     <CesiumMap />
-//   </React.StrictMode>
-// )
-
-// src/main.jsx
-// import React from 'react';
-// import ReactDOM from 'react-dom/client';
-// import CesiumViewer from './CesiumViewer';
-// import 'cesium/Widgets/widgets.css';
-
-// ReactDOM.createRoot(document.getElementById('root')).render(
-//   <React.StrictMode>
-//     <CesiumViewer />
-//   </React.StrictMode>
-// );
-
 // src/main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
