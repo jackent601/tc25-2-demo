@@ -12,6 +12,8 @@ uvicorn = "^0.34.3"
 geopandas = "^1.1.0"
 shapely = "^2.1.1"
 python-multipart = "^0.0.20"
+matplotlib = "^3.10.3"
+pulp = "^3.2.1"
 
 
 [build-system]
