@@ -4,7 +4,9 @@ import { useRef, useState } from "react";
 
 export default function DrawPolygon() {
     const viewerRef = useRef(null);
-    const [positions, setPositions] = useState([]);
+
+    const [currentPositions, setCurrentPositions] = useState([]);
+    const [allPolygons, setAllPolygons] = useState([]);
     const [drawing, setDrawing] = useState(false);
     const [handler, setHandler] = useState(null);
 
@@ -16,23 +18,30 @@ export default function DrawPolygon() {
         newHandler.setInputAction((click) => {
             const cartesian = viewer.scene.pickPosition(click.position);
             if (cartesian) {
-                setPositions((prev) => [...prev, cartesian]);
+                setCurrentPositions((prev) => [...prev, cartesian]);
             }
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
         setHandler(newHandler);
+        setCurrentPositions([]);
         setDrawing(true);
     };
 
     const finishDrawing = async () => {
+        if (currentPositions.length < 3) {
+            alert("A polygon needs at least 3 points.");
+            return;
+        }
+
         handler?.destroy();
         setHandler(null);
         setDrawing(false);
 
-        if (positions.length < 3) return;
+        // Store the polygon
+        setAllPolygons((prev) => [...prev, currentPositions]);
 
-        // Convert positions to longitude/latitude
-        const coordinates = positions.map(pos => {
+        // Send it to the backend
+        const coordinates = currentPositions.map(pos => {
             const cartographic = Cesium.Cartographic.fromCartesian(pos);
             return [
                 Cesium.Math.toDegrees(cartographic.longitude),
@@ -44,7 +53,7 @@ export default function DrawPolygon() {
             type: "Feature",
             geometry: {
                 type: "Polygon",
-                coordinates: [[...coordinates, coordinates[0]]]  // Close the polygon
+                coordinates: [[...coordinates, coordinates[0]]]
             },
             properties: {}
         };
@@ -60,18 +69,21 @@ export default function DrawPolygon() {
         } catch (err) {
             console.error("Failed to send to backend:", err);
         }
+
+        // Reset current drawing
+        setCurrentPositions([]);
     };
 
-    const resetDrawing = () => {
-        setPositions([]);
-        setDrawing(false);
+    const resetAll = () => {
         handler?.destroy();
         setHandler(null);
+        setDrawing(false);
+        setCurrentPositions([]);
+        setAllPolygons([]);
     };
 
     return (
         <>
-            {/* <div className="absolute top-4 left-4 z-10 space-x-2 bg-white p-2 rounded shadow"> */}
             <div
                 style={{
                     position: "absolute",
@@ -81,33 +93,60 @@ export default function DrawPolygon() {
                     backgroundColor: "white",
                     padding: "10px",
                     borderRadius: "6px",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.15)"
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
                 }}
             >
                 <button onClick={startDrawing}>Start Drawing</button>
                 <button onClick={finishDrawing} disabled={!drawing}>Finish</button>
-                <button onClick={resetDrawing}>Reset</button>
+                <button onClick={resetAll}>Reset All</button>
             </div>
 
             <Viewer full ref={viewerRef}>
-                {positions.length >= 3 && (
+                {/* All previously finished polygons */}
+                {allPolygons.map((poly, i) => (
+                    <div key={`poly-wrapper-${i}`}>
+                        <Entity
+                            key={`poly-${i}`}
+                            polygon={{
+                                hierarchy: poly,
+                                material: Cesium.Color.CYAN.withAlpha(0.5),
+                            }}
+                        />
+                        <Entity
+                            key={`poly-line-${i}`}
+                            polyline={{
+                                positions: [...poly, poly[0]], // close the loop
+                                width: 2,
+                                material: Cesium.Color.YELLOW,
+                            }}
+                        />
+                    </div>
+                ))}
+
+
+                {/* In-progress polygon */}
+                {currentPositions.length >= 3 && (
                     <Entity
                         polygon={{
-                            hierarchy: positions,
-                            material: Cesium.Color.BLUE.withAlpha(0.4),
+                            hierarchy: currentPositions,
+                            material: Cesium.Color.YELLOW.withAlpha(0.3),
                         }}
                     />
                 )}
-                {positions.length >= 2 && (
+
+                {/* In-progress lines */}
+                {currentPositions.length >= 2 && (
                     <Entity
                         polyline={{
-                            positions,
+                            positions: currentPositions,
                             width: 2,
                             material: Cesium.Color.YELLOW,
                         }}
                     />
                 )}
-                {positions.map((pos, idx) => (
+
+                {/* Drawn points */}
+                {currentPositions.map((pos, idx) => (
                     <Entity
                         key={`pt-${idx}`}
                         position={pos}
