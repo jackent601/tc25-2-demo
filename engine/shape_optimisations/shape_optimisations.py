@@ -142,15 +142,16 @@ def export_to_geojson(filename, op_area, placed_sensors, sensor_params):
     features = []
 
     # 1. Add the Operational Area Feature
-    op_area_feature = {
-        "type": "Feature",
-        "geometry": mapping(op_area),
-        "properties": {
-            "name": "Operational Area",
-            "type": "boundary"
+    if op_area is not None:
+        op_area_feature = {
+            "type": "Feature",
+            "geometry": mapping(op_area),
+            "properties": {
+                "name": "Operational Area",
+                "type": "boundary"
+            }
         }
-    }
-    features.append(op_area_feature)
+        features.append(op_area_feature)
 
     # 2. Add a Feature for each Sensor (Point) and its Coverage Area (Polygon)
     for i, sensor in enumerate(placed_sensors):
@@ -219,7 +220,7 @@ sensor_parameters = {
 # 2. Call the export function
 geoJsonDemo = export_to_geojson(
     filename=None,
-    op_area=operational_area,
+    op_area=None,
     placed_sensors=placed_sensors_info,
     sensor_params=sensor_parameters
 )
