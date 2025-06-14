@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import {
     Viewer,
+    Cartesian2,
     Cartesian3,
     Color,
     GeoJsonDataSource,
     PolygonHierarchy,
+    BillboardGraphics,
+    VerticalOrigin,
+    LabelGraphics,
+    LabelStyle 
 } from 'cesium/Cesium.js';
 import 'cesium/Widgets/widgets.css';
 import { ClipLoader } from 'react-spinners';
@@ -24,6 +29,7 @@ export default function CesiumWithSidebar() {
     const dataSourceRef = useRef(null);
     const fillDataSourceRef = useRef(null);
     const [isFilling, setIsFilling] = useState(false);
+    const [isCalculating, setIsCalculating] = useState(false);
 
     useEffect(() => {
         const viewer = new Viewer(containerRef.current, {
@@ -84,7 +90,7 @@ export default function CesiumWithSidebar() {
             for (let entity of entities) {
                 const entityType = entity.properties?.entity?.getValue();
 
-                const fillColor = ENTITY_COLOR_MAP[entityType] || Cesium.Color.GRAY.withAlpha(0.4);
+                const fillColor = ENTITY_COLOR_MAP[entityType] || Color.GRAY.withAlpha(0.4);
 
                 entity.polygon.material = fillColor;
                 entity.polygon.outline = true;
@@ -98,6 +104,65 @@ export default function CesiumWithSidebar() {
             console.error("Error during fill:", error);
         } finally {
             setIsFilling(false); // Done loading
+        }
+    };
+
+    const handleCalculate = async () => {
+        setIsCalculating(true); // Start loading
+        try {
+            // Clear previous fill result if needed
+            if (fillDataSourceRef.current) {
+                viewerRef.current.dataSources.remove(fillDataSourceRef.current);
+            }
+
+            const res = await fetch('http://localhost:8000/opt-area');
+            const geojson = await res.json();
+
+            const ds = await GeoJsonDataSource.load(geojson);
+
+            // Apply styling based on 'entity' property
+            const entities = ds.entities.values;
+            for (let entity of entities) {
+                const entityType = entity.properties?.entity?.getValue();
+
+                const fillColor = ENTITY_COLOR_MAP[entityType] || Color.GRAY.withAlpha(0.4);
+
+                if (entity.position) {
+                    // Remove default point
+                    entity.point = undefined;
+
+                    // Add custom billboard (icon) instead
+                    entity.billboard = new BillboardGraphics({
+                        image: "/icons/markers/marker-icon-2x-black.png", // put this in your `public/icons` folder
+                        scale: 0.5, // smaller icon
+                        verticalOrigin: VerticalOrigin.BOTTOM
+                    });
+
+                    const props = entity.properties;
+
+                    // Optional: Add custom label
+                    entity.label = new LabelGraphics({
+                        text: props?.name?.getValue?.() || "",
+                        font: "12px sans-serif",
+                        fillColor: Color.WHITE,
+                        outlineColor: Color.BLACK,
+                        outlineWidth: 2,
+                        style: LabelStyle.FILL_AND_OUTLINE,
+                        pixelOffset: new Cartesian2(0, -30),
+                        showBackground: true,
+                        backgroundColor: Color.BLACK.withAlpha(0.5),
+                    });
+                }
+    
+            }
+
+            viewerRef.current.dataSources.add(ds);
+            viewerRef.current.zoomTo(ds);
+            fillDataSourceRef.current = ds;
+        } catch (error) {
+            console.error("Error during fill:", error);
+        } finally {
+            setIsCalculating(false); // Done loading
         }
     };
 
@@ -136,6 +201,15 @@ export default function CesiumWithSidebar() {
                 <button onClick={handleFill} disabled={!selected || isFilling} style={{ width: '100%', marginBottom: '0.5rem' }}>
                     {isFilling ? "Filling..." : "Fill"}
                     {isFilling && (
+                        <div style={{ marginTop: '1rem' }}>
+                            <ClipLoader color="#666" size={35} />
+                        </div>
+                    )}
+                </button>
+
+                <button onClick={handleCalculate} disabled={!selected || isCalculating} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    {isCalculating ? "Calculating..." : "Calculate"}
+                    {isCalculating && (
                         <div style={{ marginTop: '1rem' }}>
                             <ClipLoader color="#666" size={35} />
                         </div>

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 import os, json, time
 import geopandas as gpd
+from shape_optimisations.shape_optimisations import geoJsonDemo
 
 app = FastAPI()
 
@@ -28,6 +29,19 @@ def get_geojson(name: str):
         raise HTTPException(status_code=404, detail="GeoJSON not found")
     return FileResponse(path, media_type="application/geo+json")
     
+    
+@app.get("/fill")
+def run_fill_operation():
+    time.sleep(2)
+    path = os.path.join("geojson", "lookup_mocks", "exampleFill.geojson")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="GeoJSON not found")
+    return FileResponse(path, media_type="application/geo+json")
+
+@app.get("/opt-area")
+def run_fill_operation():
+    return geoJsonDemo
+
 @app.get("/polygon")
 def get_polygon():
     return {
@@ -90,13 +104,6 @@ def get_polygon():
                     ]
                 ]
     }
-    
-@app.get("/fill")
-def run_fill_operation():
-    path = os.path.join("geojson", "lookup_mocks", "exampleFill.geojson")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="GeoJSON not found")
-    return FileResponse(path, media_type="application/geo+json")
 
 # Below is an exmaple of constructing geoJson on the fly
 # @app.get("/fill")
