@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-    Viewer,
     Cartesian2,
     Cartesian3,
     Color,
+    Viewer,
     GeoJsonDataSource,
     PolygonHierarchy,
     BillboardGraphics,
@@ -11,9 +11,9 @@ import {
     LabelGraphics,
     LabelStyle 
 } from 'cesium';
-// import 'cesium/Widgets/widgets.css';
-// import 'cesium/Build/Cesium/Widgets/widgets.css';
 import { ClipLoader } from 'react-spinners';
+// import * as Cesium from "cesium";
+// import { Viewer, Entity } from "resium";
 
 const ENTITY_COLOR_MAP = {
     A: Color.RED.withAlpha(0.5),
@@ -31,6 +31,12 @@ export default function CesiumWithSidebar() {
     const fillDataSourceRef = useRef(null);
     const [isFilling, setIsFilling] = useState(false);
     const [isCalculating, setIsCalculating] = useState(false);
+
+    // Drawing Polygons
+    const [currentPositions, setCurrentPositions] = useState([]);
+    const [allPolygons, setAllPolygons] = useState([]);
+    const [drawing, setDrawing] = useState(false);
+    const [handler, setHandler] = useState(null);
 
     useEffect(() => {
         const viewer = new Viewer(containerRef.current, {
@@ -51,6 +57,79 @@ export default function CesiumWithSidebar() {
 
         return () => viewer.destroy();
     }, []);
+
+    // Drawing Polygons
+   const startDrawing = () => {
+        if (!viewerRef.current) return;
+        const viewer = viewerRef.current.cesiumElement;
+
+        const newHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+        newHandler.setInputAction((click) => {
+            const cartesian = viewer.scene.pickPosition(click.position);
+            if (cartesian) {
+                setCurrentPositions((prev) => [...prev, cartesian]);
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+        setHandler(newHandler);
+        setCurrentPositions([]);
+        setDrawing(true);
+    };
+
+    const finishDrawing = async () => {
+        if (currentPositions.length < 3) {
+            alert("A polygon needs at least 3 points.");
+            return;
+        }
+
+        handler?.destroy();
+        setHandler(null);
+        setDrawing(false);
+
+        // Store the polygon
+        setAllPolygons((prev) => [...prev, currentPositions]);
+
+        // Send it to the backend
+        const coordinates = currentPositions.map(pos => {
+            const cartographic = Cesium.Cartographic.fromCartesian(pos);
+            return [
+                Cesium.Math.toDegrees(cartographic.longitude),
+                Cesium.Math.toDegrees(cartographic.latitude)
+            ];
+        });
+
+        const geojson = {
+            type: "Feature",
+            geometry: {
+                type: "Polygon",
+                coordinates: [[...coordinates, coordinates[0]]]
+            },
+            properties: {}
+        };
+
+        try {
+            const response = await fetch("http://localhost:8000/test-draw", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(geojson)
+            });
+            const result = await response.json();
+            console.log("Backend result:", result);
+        } catch (err) {
+            console.error("Failed to send to backend:", err);
+        }
+
+        // Reset current drawing
+        setCurrentPositions([]);
+    };
+
+    const resetAll = () => {
+        handler?.destroy();
+        setHandler(null);
+        setDrawing(false);
+        setCurrentPositions([]);
+        setAllPolygons([]);
+    };
 
     const handleLoad = async () => {
         if (!selected) return;
@@ -198,6 +277,24 @@ export default function CesiumWithSidebar() {
                 <button onClick={handleLoad} style={{ width: '100%', marginBottom: '0.5rem' }}>
                     Load
                 </button>
+
+                <div 
+                    style={{
+                        // position: "absolute",
+                        // top: "20px",
+                        // left: "20px",
+                        // zIndex: 10,
+                        backgroundColor: "white",
+                        padding: "10px",
+                        borderRadius: "6px",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                        marginBottom: '0.5rem',
+                    }}
+                >
+                    <button onClick={startDrawing} style={{ marginRight: '0.5rem' }}>Start Drawing</button>
+                    <button onClick={finishDrawing} disabled={!drawing} style={{ marginRight: '0.5rem' }}>Add</button>
+                    <button onClick={resetAll} >Reset All</button>
+                </div>
 
                 <button onClick={handleFill} disabled={!selected || isFilling} style={{ width: '100%', marginBottom: '0.5rem' }}>
                     {isFilling ? "Filling..." : "Fill"}
