@@ -14,7 +14,9 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
-    "react-spinners": "^0.17.0"
+    "react-spinners": "^0.17.0",
+    "resium": "^1.19.0-beta.1",
+    "vite-plugin-copy": "^0.1.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

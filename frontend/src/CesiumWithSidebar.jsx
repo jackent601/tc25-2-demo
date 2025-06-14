@@ -10,8 +10,9 @@ import {
     VerticalOrigin,
     LabelGraphics,
     LabelStyle 
-} from 'cesium/Cesium.js';
-import 'cesium/Widgets/widgets.css';
+} from 'cesium';
+// import 'cesium/Widgets/widgets.css';
+// import 'cesium/Build/Cesium/Widgets/widgets.css';
 import { ClipLoader } from 'react-spinners';
 
 const ENTITY_COLOR_MAP = {
