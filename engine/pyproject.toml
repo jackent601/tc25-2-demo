@@ -2,8 +2,7 @@
 name = "engine"
 version = "0.1.0"
 description = ""
-authors = ["AB <bolton.andrew@digital.mod.uk>"]
-readme = "README.md"
+authors = ["JE <jackent601@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
