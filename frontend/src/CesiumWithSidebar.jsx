@@ -164,19 +164,27 @@ export default function CesiumWithSidebar() {
             const geojsonResponse = await response.json();
             console.log("Backend result:", geojsonResponse);
 
-            // comment for fast API testing
+            // uncomment for fast API testing
             // const res = await fetch('http://localhost:8000/opt-placement-example');
             // const geojsonResponse = await res.json();
 
-            // uncomment to keep sensor markers
-            const geojsonFiltered = geojsonResponse
+            // comment to remove sensor markers
+            // fetch geojson from response
+            const geojsonFiltered = geojsonResponse.geojson
 
-            // comment to include sensor markers
+            // uncomment to remove sensor markers
+            // fetch geojson from response and filter
             // const geojsonFiltered = {
-            // ...geojsonResponse,
-            // features: geojsonResponse.features.filter(f => f.geometry.type !== 'Point')
+            // ...geojsonResponse.geojson,
+            // features: geojsonResponse.geojson.features.filter(f => f.geometry.type !== 'Point')
             // };
             const ds = await GeoJsonDataSource.load(geojsonFiltered)
+
+            // print results
+            const numSensors = geojsonResponse.numSensors
+            const estCoverage = geojsonResponse.estCoverage
+            const accCoverage = geojsonResponse.accCoverage
+            alert(`Optimised! (Kind of...)\nNum Sensors: ${numSensors}\nestCoverage: ${estCoverage}\naccCoverage: ${accCoverage}`)
 
 
             // new data loaded, remove old if present

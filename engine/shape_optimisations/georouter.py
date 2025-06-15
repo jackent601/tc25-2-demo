@@ -253,10 +253,10 @@ def calculateOptimise(AOO):
 
     area_coverage_percentage = (final_covered_area.area / AOO.area)
     print(f"Actual Area Coverage: {area_coverage_percentage*100:.2f}%")
-    return placed_sensors_info
+    return placed_sensors_info, f'{len(placed_sensors_info)}', f'{estimated_coverage_perc*100:.2f}', f'{area_coverage_percentage*100:.2f}'
 
 @router.post("/optimise-polygon-coverage")
-async def test_draw_polygon(request: Request):
+async def optimise_polygon_coverage(request: Request):
     # debug
     print(f"Request: {request}")
     
@@ -269,15 +269,15 @@ async def test_draw_polygon(request: Request):
     
     # Calculate optimisation
     # 
-    placed_sensors = calculateOptimise(OpAreaPolygons)
+    placed_sensors, numSensors, estCoverage, accCoverage = calculateOptimise(OpAreaPolygons)
     geoJsonDemo = export_to_geojson(filename=None, op_area=None,placed_sensors=placed_sensors)
     print("Optimised Sensor GeoJSON:", data)
     
     # You can add some dummy response here
     # return JSONResponse({"status": "success", "received": data["geometry"]["type"]})
     
-    # return JSONResponse({"status": "success", "response": geoJsonDemo})
-    return geoJsonDemo
+    return JSONResponse({"status": "success", "geojson": geoJsonDemo, "numSensors": f'{numSensors}', "estCoverage": f'{estCoverage}', "accCoverage": f'{accCoverage}'})
+    # return geoJsonDemo
 
 """
 example data for fast responses for testing
@@ -315,10 +315,11 @@ EXAMPLE_OPERATIONAL_AREA = MultiPolygon(
         ],[]],
     ]
 )
-EXAMPLE_PLACED_SENSORS = calculateOptimise(EXAMPLE_OPERATIONAL_AREA)
+EXAMPLE_PLACED_SENSORS, numSensors, estCoverage, accCoverage = calculateOptimise(EXAMPLE_OPERATIONAL_AREA)
 EXAMPLE_OPTIMISED_PLACEMENT_GEOJSON = export_to_geojson(filename=None, op_area=None,placed_sensors=EXAMPLE_PLACED_SENSORS)
 
 # Serves an example result from the optimisation algorithm (used for fast testing only)
 @router.get("/opt-placement-example")
 def run_fill_operation():
-    return EXAMPLE_OPTIMISED_PLACEMENT_GEOJSON
+    # return EXAMPLE_OPTIMISED_PLACEMENT_GEOJSON
+    return JSONResponse({"status": "success", "geojson": EXAMPLE_OPTIMISED_PLACEMENT_GEOJSON, "numSensors": f'{numSensors}', "estCoverage": f'{estCoverage}', "accCoverage": f'{accCoverage}'})
