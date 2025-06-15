@@ -38,7 +38,7 @@ def get_geojson(name: str):
 @app.get("/coloured-polygons")
 def run_fill_operation():
     time.sleep(2)
-    path = os.path.join("geojson", "lookup_mocks", "exampleFill.geojson")
+    path = os.path.join("geojson", "lookup_mocks", "exampleColouredPolygons.geojson")
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="GeoJSON not found")
     return FileResponse(path, media_type="application/geo+json")
