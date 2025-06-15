@@ -2,7 +2,7 @@ import { Viewer, Entity } from "resium";
 import * as Cesium from "cesium";
 import { useEffect, useState, useRef, useMemo } from "react";
 
-// Function to compute percentiles
+// Compute percentiles
 function computePercentiles(values, p) {
     if (!values.length) return null;
     const sorted = [...values].sort((a, b) => a - b);
@@ -22,10 +22,23 @@ function getColorFromValue(value, min, max) {
 export default function DrawEnvData() {
     const viewerRef = useRef(null);
     const [geoData, setGeoData] = useState(null);
-    const [depth, setDepth] = useState(0.0); // default depth
+    const [depthOptions, setDepthOptions] = useState([]);
+    const [depth, setDepth] = useState(null);
+
+    // Fetch available depths
+    useEffect(() => {
+        fetch("http://localhost:8000/available-depths")
+            .then(res => res.json())
+            .then(data => {
+                setDepthOptions(data);
+                if (data.length > 0) setDepth(data[0]); // default to first depth
+            })
+            .catch(err => console.error("Failed to load depth options:", err));
+    }, []);
 
     // Fetch GeoJSON when depth changes
     useEffect(() => {
+        if (depth === null) return;
         fetch(`http://localhost:8000/points-geojson?depth=${depth}`)
             .then(res => res.json())
             .then(data => setGeoData(JSON.parse(data)))
@@ -58,12 +71,10 @@ export default function DrawEnvData() {
             }}>
                 <label>
                     Depth (m):&nbsp;
-                    <select value={depth} onChange={e => setDepth(parseFloat(e.target.value))}>
-                        <option value={0.0}>0.0</option>
-                        <option value={10.0}>10.0</option>
-                        <option value={50.0}>50.0</option>
-                        <option value={100.0}>100.0</option>
-                        {/* Add more depths as needed */}
+                    <select value={depth ?? ""} onChange={e => setDepth(parseFloat(e.target.value))}>
+                        {depthOptions.map((d, i) => (
+                            <option key={i} value={d}>{d} m</option>
+                        ))}
                     </select>
                 </label>
             </div>

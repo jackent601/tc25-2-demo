@@ -20,6 +20,15 @@ app.include_router(georouter.router)
 
 GEOJSON_DIR = "geojson/areas"
 
+@app.get("/available-depths")
+def get_available_depths():
+    try:
+        file_path = os.path.join("environmentalData", "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_1749908476181.nc")
+        ds = xr.open_dataset(file_path)
+        depths = ds['depth'].values.tolist()
+        return depths
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/points-geojson")
