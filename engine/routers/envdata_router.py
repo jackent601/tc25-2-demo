@@ -8,7 +8,9 @@ import pandas as pd
 
 router = APIRouter()
 
-NETCDF_PATH = os.path.join("environmentalData", "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_1749908476181.nc")
+NETCDF_PATH = os.path.join("tc25-2-demo",
+                           "environmentalData", 
+                           "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_1749908476181.nc")
 
 @router.get("/available-depths")
 def get_available_depths():
