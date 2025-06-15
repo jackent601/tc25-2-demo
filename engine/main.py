@@ -20,6 +20,37 @@ app.include_router(georouter.router)
 
 GEOJSON_DIR = "geojson/areas"
 
+
+
+@app.get("/points-geojson")
+async def get_points_geojson(depth: float = 0.0):
+    try:
+         # Load NetCDF file
+        file_path = os.path.join("environmentalData", "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_1749908476181.nc")
+        ds = xr.open_dataset(file_path)
+
+        # Extract salinity at specified depth
+        salinity = ds['so'].sel(depth=depth)
+
+        # Convert to DataFrame
+        df = salinity.to_dataframe().reset_index().dropna(subset=['so'])
+        df['depth'] = depth
+
+        # Create GeoDataFrame
+        geometry = [Point(xy) for xy in zip(df['longitude'], df['latitude'])]
+        gdf = gpd.GeoDataFrame(df, geometry=geometry)
+        gdf = gdf[['so', 'time', 'depth', 'geometry']]
+
+        # Return as GeoJSON
+        return JSONResponse(content=gdf.to_json())
+
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="NetCDF file not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 @app.get("/geojson-names")
 def list_geojson_files():
     files = [f for f in os.listdir(GEOJSON_DIR) if f.endswith(".geojson")]

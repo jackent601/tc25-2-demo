@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 // import CesiumViewer from './CesiumViewer';
 // import CesiumViewerWithPolygon from './CesiumViewerWithPolygon';
 import CesiumWithSidebar from './CesiumWithSidebar';
-import PolygonDrawer from './PolygonDrawer'
+// import PolygonDrawer from './PolygonDrawer'
 import DrawPolygon from './DrawPolygon'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -15,7 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         {/* <Route path="/" element={<CesiumViewer />} /> */}
         {/* <Route path="/with-polygon" element={<CesiumViewerWithPolygon />} /> */}
         <Route path="/" element={<CesiumWithSidebar />} />
-        <Route path="/PolygonDrawer" element={<PolygonDrawer />} />
+        {/* <Route path="/PolygonDrawer" element={<PolygonDrawer />} /> */}
         <Route path="/Draw" element={<DrawPolygon />} />
       </Routes>
     </BrowserRouter>
