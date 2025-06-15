@@ -40,6 +40,9 @@ export default function CesiumWithSidebar() {
     const [drawing, setDrawing] = useState(false);
     const [handler, setHandler] = useState(null);
 
+    // Optimisation
+    const sandBoxResultsRef = useRef(null);
+
     // useEffect(() => {
     //     const viewer = new Viewer(containerRef.current, {
     //         shouldAnimate: true,
@@ -115,34 +118,95 @@ export default function CesiumWithSidebar() {
             ];
         });
 
-        const geojson = {
-            type: "Feature",
-            geometry: {
-                type: "Polygon",
-                coordinates: [[...coordinates, coordinates[0]]]
-            },
-            properties: {}
-        };
+        // API now separate sandbox function
+        // const geojson = {
+        //     type: "Feature",
+        //     geometry: {
+        //         type: "Polygon",
+        //         coordinates: [[...coordinates, coordinates[0]]]
+        //     },
+        //     properties: {}
+        // };
 
-        try {
-            const response = await fetch("http://localhost:8000/test-draw", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(geojson)
-            });
-            const result = await response.json();
-            console.log("Backend result:", result);
-        } catch (err) {
-            console.error("Failed to send to backend:", err);
-        }
+        // try {
+        //     const response = await fetch("http://localhost:8000/test-draw", {
+        //         method: "POST",
+        //         headers: { "Content-Type": "application/json" },
+        //         body: JSON.stringify(geojson)
+        //     });
+        //     const result = await response.json();
+        //     console.log("Backend result:", result);
+        // } catch (err) {
+        //     console.error("Failed to send to backend:", err);
+        // }
 
         // Reset current drawing
         setCurrentPositions([]);
     };
 
-    const sendAllPolygons = async () => {
+    const sendAllPolygonsToSandbox = async () => {
+
+        setIsCalculating(true); // Start loading
+        // try {
+        //     // Clear previous fill result if needed
+        //     if (fillDataSourceRef.current) {
+        //         viewerRef.current.cesiumElement.dataSources.remove(fillDataSourceRef.current);
+        //     }
+
+        //     const res = await fetch('http://localhost:8000/opt-area');
+        //     const geojson = await res.json();
+
+        //     const ds = await GeoJsonDataSource.load(geojson);
+
+        //     // Apply styling based on 'entity' property
+        //     const entities = ds.entities.values;
+        //     for (let entity of entities) {
+        //         const entityType = entity.properties?.entity?.getValue();
+
+        //         const fillColor = ENTITY_COLOR_MAP[entityType] || Color.GRAY.withAlpha(0.4);
+
+        //         if (entity.position) {
+        //             // Remove default point
+        //             entity.point = undefined;
+
+        //             // Add custom billboard (icon) instead
+        //             entity.billboard = new BillboardGraphics({
+        //                 image: "/icons/markers/marker-icon-2x-black.png", // put this in your `public/icons` folder
+        //                 scale: 0.5, // smaller icon
+        //                 verticalOrigin: VerticalOrigin.BOTTOM
+        //             });
+
+        //             const props = entity.properties;
+
+        //             // Optional: Add custom label
+        //             entity.label = new LabelGraphics({
+        //                 text: props?.name?.getValue?.() || "",
+        //                 font: "12px sans-serif",
+        //                 fillColor: Color.WHITE,
+        //                 outlineColor: Color.BLACK,
+        //                 outlineWidth: 2,
+        //                 style: LabelStyle.FILL_AND_OUTLINE,
+        //                 pixelOffset: new Cartesian2(0, -30),
+        //                 showBackground: true,
+        //                 backgroundColor: Color.BLACK.withAlpha(0.5),
+        //             });
+        //         }
+
+        //     }
+
+        //     viewerRef.current.cesiumElement.dataSources.add(ds);
+        //     // viewerRef.current.zoomTo(ds);
+        //     fillDataSourceRef.current = ds;
+        // } catch (error) {
+        //     console.error("Error during fill:", error);
+        // } finally {
+        //     setIsCalculating(false); // Done loading
+        // }
+
+
         if (allPolygons.length === 0) {
             alert("No polygons to send.");
+            setIsCalculating(false); // Done loading
             return;
         }
 
@@ -172,53 +236,86 @@ export default function CesiumWithSidebar() {
             features: features,
         };
 
+        console.log("features: ", features)
+
         try {
             const response = await fetch("http://localhost:8000/test-draw", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(featureCollection),
             });
-            const result = await response.json();
-            console.log("Backend result:", result);
+            const geojson = await response.json();
+            console.log("Backend result:", geojson);
+            const ds = await GeoJsonDataSource.load(geojson);
+
+            // new data loaded, remove old if present
+            if (sandBoxResultsRef.current) {
+                viewerRef.current.cesiumElement.dataSources.remove(sandBoxResultsRef.current);
+            }
+
+            // Apply styling based on 'entity' property
+            const entities = ds.entities.values;
+            for (let entity of entities) {
+                const entityType = entity.properties?.entity?.getValue();
+
+                const fillColor = ENTITY_COLOR_MAP[entityType] || Color.GRAY.withAlpha(0.4);
+
+                if (entity.position) {
+                    // Remove default point
+                    entity.point = undefined;
+
+                    // Add custom billboard (icon) instead
+                    // entity.billboard = new BillboardGraphics({
+                    //     image: "/icons/markers/marker-icon-2x-black.png", // put this in your `public/icons` folder
+                    //     scale: 0.5, // smaller icon
+                    //     verticalOrigin: VerticalOrigin.BOTTOM
+                    // });
+
+                    const props = entity.properties;
+
+                    // Optional: Add custom label
+                    entity.label = new LabelGraphics({
+                        text: props?.name?.getValue?.() || "",
+                        font: "12px sans-serif",
+                        fillColor: Color.WHITE,
+                        outlineColor: Color.BLACK,
+                        outlineWidth: 2,
+                        style: LabelStyle.FILL_AND_OUTLINE,
+                        pixelOffset: new Cartesian2(0, -30),
+                        showBackground: true,
+                        backgroundColor: Color.BLACK.withAlpha(0.5),
+                    });
+                }
+
+            }
+        // // Clear previous layer
+        // if (sandBoxResultsRef.current) {
+        //     viewerRef.current.cesiumElement.dataSources.remove(sandBoxResultsRef.current);
+        // }
+
+        // // Load selected GeoJSON
+        // const url = `http://localhost:8000/geojson?name=${selected}`;
+        // const ds = await GeoJsonDataSource.load(url, {
+        //     stroke: Color.BLACK,
+        //     fill: Color.CYAN.withAlpha(0.5),
+        //     strokeWidth: 2,
+        // });
+
+        // viewerRef.current.cesiumElement.dataSources.add(ds);
+        // // viewerRef.current.zoomTo(ds);
+        // dataSourceRef.current = ds;
+        
+            viewerRef.current.cesiumElement.dataSources.add(ds);
+            sandBoxResultsRef.current = ds;
+            // viewerRef.current.zoomTo(ds);
+            // fillDataSourceRef.current = ds;
         } catch (err) {
             console.error("Failed to send polygons to backend:", err);
+        } finally {
+            setIsCalculating(false); // Done loading
         }
+
     };
-
-    // const sendDrawingToBackend = async () => {
-    //     // Send it to the backend
-    //     const coordinates = currentPositions.map(pos => {
-    //         const cartographic = Cesium.Cartographic.fromCartesian(pos);
-    //         return [
-    //             Cesium.Math.toDegrees(cartographic.longitude),
-    //             Cesium.Math.toDegrees(cartographic.latitude)
-    //         ];
-    //     });
-
-    //     const geojson = {
-    //         type: "Feature",
-    //         geometry: {
-    //             type: "Polygon",
-    //             coordinates: [[...coordinates, coordinates[0]]]
-    //         },
-    //         properties: {}
-    //     };
-
-    //     try {
-    //         const response = await fetch("http://localhost:8000/test-draw", {
-    //             method: "POST",
-    //             headers: { "Content-Type": "application/json" },
-    //             body: JSON.stringify(geojson)
-    //         });
-    //         const result = await response.json();
-    //         console.log("Backend result:", result);
-    //     } catch (err) {
-    //         console.error("Failed to send to backend:", err);
-    //     }
-
-    //     // Reset current drawing
-    //     setCurrentPositions([]);
-    // };
 
     const resetAll = () => {
         handler?.destroy();
@@ -226,6 +323,12 @@ export default function CesiumWithSidebar() {
         setDrawing(false);
         setCurrentPositions([]);
         setAllPolygons([]);
+    };
+
+    const wipeSandboxResults = () => {
+        if (sandBoxResultsRef.current) {
+            viewerRef.current.cesiumElement.dataSources.remove(sandBoxResultsRef.current);
+        }
     };
 
     const handleLoad = async () => {
@@ -284,64 +387,64 @@ export default function CesiumWithSidebar() {
         }
     };
 
-    const handleCalculate = async () => {
-        setIsCalculating(true); // Start loading
-        try {
-            // Clear previous fill result if needed
-            if (fillDataSourceRef.current) {
-                viewerRef.current.cesiumElement.dataSources.remove(fillDataSourceRef.current);
-            }
+    // const handleCalculate = async () => {
+    //     setIsCalculating(true); // Start loading
+    //     try {
+    //         // Clear previous fill result if needed
+    //         if (fillDataSourceRef.current) {
+    //             viewerRef.current.cesiumElement.dataSources.remove(fillDataSourceRef.current);
+    //         }
 
-            const res = await fetch('http://localhost:8000/opt-area');
-            const geojson = await res.json();
+    //         const res = await fetch('http://localhost:8000/opt-area');
+    //         const geojson = await res.json();
 
-            const ds = await GeoJsonDataSource.load(geojson);
+    //         const ds = await GeoJsonDataSource.load(geojson);
 
-            // Apply styling based on 'entity' property
-            const entities = ds.entities.values;
-            for (let entity of entities) {
-                const entityType = entity.properties?.entity?.getValue();
+    //         // Apply styling based on 'entity' property
+    //         const entities = ds.entities.values;
+    //         for (let entity of entities) {
+    //             const entityType = entity.properties?.entity?.getValue();
 
-                const fillColor = ENTITY_COLOR_MAP[entityType] || Color.GRAY.withAlpha(0.4);
+    //             const fillColor = ENTITY_COLOR_MAP[entityType] || Color.GRAY.withAlpha(0.4);
 
-                if (entity.position) {
-                    // Remove default point
-                    entity.point = undefined;
+    //             if (entity.position) {
+    //                 // Remove default point
+    //                 entity.point = undefined;
 
-                    // Add custom billboard (icon) instead
-                    entity.billboard = new BillboardGraphics({
-                        image: "/icons/markers/marker-icon-2x-black.png", // put this in your `public/icons` folder
-                        scale: 0.5, // smaller icon
-                        verticalOrigin: VerticalOrigin.BOTTOM
-                    });
+    //                 // Add custom billboard (icon) instead
+    //                 entity.billboard = new BillboardGraphics({
+    //                     image: "/icons/markers/marker-icon-2x-black.png", // put this in your `public/icons` folder
+    //                     scale: 0.5, // smaller icon
+    //                     verticalOrigin: VerticalOrigin.BOTTOM
+    //                 });
 
-                    const props = entity.properties;
+    //                 const props = entity.properties;
 
-                    // Optional: Add custom label
-                    entity.label = new LabelGraphics({
-                        text: props?.name?.getValue?.() || "",
-                        font: "12px sans-serif",
-                        fillColor: Color.WHITE,
-                        outlineColor: Color.BLACK,
-                        outlineWidth: 2,
-                        style: LabelStyle.FILL_AND_OUTLINE,
-                        pixelOffset: new Cartesian2(0, -30),
-                        showBackground: true,
-                        backgroundColor: Color.BLACK.withAlpha(0.5),
-                    });
-                }
+    //                 // Optional: Add custom label
+    //                 entity.label = new LabelGraphics({
+    //                     text: props?.name?.getValue?.() || "",
+    //                     font: "12px sans-serif",
+    //                     fillColor: Color.WHITE,
+    //                     outlineColor: Color.BLACK,
+    //                     outlineWidth: 2,
+    //                     style: LabelStyle.FILL_AND_OUTLINE,
+    //                     pixelOffset: new Cartesian2(0, -30),
+    //                     showBackground: true,
+    //                     backgroundColor: Color.BLACK.withAlpha(0.5),
+    //                 });
+    //             }
 
-            }
+    //         }
 
-            viewerRef.current.cesiumElement.dataSources.add(ds);
-            // viewerRef.current.zoomTo(ds);
-            fillDataSourceRef.current = ds;
-        } catch (error) {
-            console.error("Error during fill:", error);
-        } finally {
-            setIsCalculating(false); // Done loading
-        }
-    };
+    //         viewerRef.current.cesiumElement.dataSources.add(ds);
+    //         // viewerRef.current.zoomTo(ds);
+    //         fillDataSourceRef.current = ds;
+    //     } catch (error) {
+    //         console.error("Error during fill:", error);
+    //     } finally {
+    //         setIsCalculating(false); // Done loading
+    //     }
+    // };
 
     return (
         <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
@@ -398,8 +501,17 @@ export default function CesiumWithSidebar() {
                     )}
                 </button>
 
-                <button onClick={handleCalculate} disabled={!selected || isCalculating} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                {/* <button onClick={handleCalculate} disabled={!selected || isCalculating} style={{ width: '100%', marginBottom: '0.5rem' }}>
                     {isCalculating ? "Calculating..." : "Calculate"}
+                    {isCalculating && (
+                        <div style={{ marginTop: '1rem' }}>
+                            <ClipLoader color="#666" size={35} />
+                        </div>
+                    )}
+                </button> */}
+
+                <button onClick={sendAllPolygonsToSandbox} disabled={isCalculating} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    {isCalculating ? "Calculating..." : "Sandbox"}
                     {isCalculating && (
                         <div style={{ marginTop: '1rem' }}>
                             <ClipLoader color="#666" size={35} />
@@ -407,12 +519,12 @@ export default function CesiumWithSidebar() {
                     )}
                 </button>
 
-                <button onClick={sendAllPolygons} style={{ width: '100%', marginBottom: '0.5rem' }}>
-                    placeholder 1
-                </button>
+                {/* <button onClick={sendAllPolygonsToSandbox} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    Sandbox
+                </button> */}
 
-                <button style={{ width: '100%', marginBottom: '0.5rem' }}>
-                    placeholder 2
+                <button onClick={wipeSandboxResults} style={{ width: '100%', marginBottom: '0.5rem' }}>
+                    Clean Sandbox
                 </button>
 
                 <button style={{ width: '100%' }}>placeholder 3</button>
