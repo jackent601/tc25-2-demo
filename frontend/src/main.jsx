@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import CesiumWithSidebar from './CesiumWithSidebar';
 // import PolygonDrawer from './PolygonDrawer'
 import DrawPolygon from './DrawPolygon'
+import DrawEnvData from './DrawEnvData'; 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<CesiumWithSidebar />} />
         {/* <Route path="/PolygonDrawer" element={<PolygonDrawer />} /> */}
         <Route path="/Draw" element={<DrawPolygon />} />
+        <Route path="/EnvData" element={<DrawEnvData />} /> 
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
