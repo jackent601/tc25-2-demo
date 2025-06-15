@@ -10,52 +10,6 @@ import json
 
 router = APIRouter()
 
-# @router.post("/test-draw")
-# async def test_draw_polygon(request: Request):
-#     print(f"Request: {request}")
-#     data = await request.json()
-#     print("Received GeoJSON:", data)
-    
-#     # You can add some dummy response here
-#     # return JSONResponse({"status": "success", "received": data["geometry"]["type"]})
-    
-#     return JSONResponse({"status": "success", "received": data})
-
-# Example operational area to test Tim's algorithm function
-operational_area = MultiPolygon(
-    [
-        [[
-            (-15.63607,63.44591),
-            (-14.87971,64.01143),
-            (-13.44727,64.15853),
-            (-9.47021,63.56812),
-            (-7.85655,62.73101),
-            (-8.02002,61.89758),
-            (-9.42634,61.81594),
-            (-13.02268,62.61201),
-        ],[]],
-        [[
-            (-5.9332,61.79661),
-            (-5.34871,62.16978),
-            (-3.5376,61.98027),
-            (-1.604,61.27023),
-            (-1.4502,60.91975),
-            (-2.41515,60.37148),
-            (-3.83423,60.58531),
-            (-5.625,61.12202),
-            (-6.1084,61.53317),
-        ],[]],
-        [[
-            (-26.06663,68.64959),
-            (-24.60937,68.08971),
-            (-22.58789,66.65298),
-            (-24.52148,66.00015),
-            (-26.5078,66.31433),
-            (-28.82553,67.85732),
-        ],[]],
-    ]
-)
-
 """ 
 fudge function to coerce cesium POST json data into a shapely.geometry MultiPolygon
 exactly the type of fudge that isnt needed once API to core utils is well defined between
@@ -301,7 +255,7 @@ def calculateOptimise(AOO):
     print(f"Actual Area Coverage: {area_coverage_percentage*100:.2f}%")
     return placed_sensors_info
 
-@router.post("/test-draw")
+@router.post("/optimise-polygon-coverage")
 async def test_draw_polygon(request: Request):
     # debug
     print(f"Request: {request}")
@@ -314,7 +268,7 @@ async def test_draw_polygon(request: Request):
     OpAreaPolygons = geojson_to_multipolygon(data)
     
     # Calculate optimisation
-    # placed_sensors = calculateOptimise(operational_area)
+    # 
     placed_sensors = calculateOptimise(OpAreaPolygons)
     geoJsonDemo = export_to_geojson(filename=None, op_area=None,placed_sensors=placed_sensors)
     print("Optimised Sensor GeoJSON:", data)
@@ -324,3 +278,47 @@ async def test_draw_polygon(request: Request):
     
     # return JSONResponse({"status": "success", "response": geoJsonDemo})
     return geoJsonDemo
+
+"""
+example data for fast responses for testing
+"""
+EXAMPLE_OPERATIONAL_AREA = MultiPolygon(
+    [
+        [[
+            (-15.63607,63.44591),
+            (-14.87971,64.01143),
+            (-13.44727,64.15853),
+            (-9.47021,63.56812),
+            (-7.85655,62.73101),
+            (-8.02002,61.89758),
+            (-9.42634,61.81594),
+            (-13.02268,62.61201),
+        ],[]],
+        [[
+            (-5.9332,61.79661),
+            (-5.34871,62.16978),
+            (-3.5376,61.98027),
+            (-1.604,61.27023),
+            (-1.4502,60.91975),
+            (-2.41515,60.37148),
+            (-3.83423,60.58531),
+            (-5.625,61.12202),
+            (-6.1084,61.53317),
+        ],[]],
+        [[
+            (-26.06663,68.64959),
+            (-24.60937,68.08971),
+            (-22.58789,66.65298),
+            (-24.52148,66.00015),
+            (-26.5078,66.31433),
+            (-28.82553,67.85732),
+        ],[]],
+    ]
+)
+EXAMPLE_PLACED_SENSORS = calculateOptimise(EXAMPLE_OPERATIONAL_AREA)
+EXAMPLE_OPTIMISED_PLACEMENT_GEOJSON = export_to_geojson(filename=None, op_area=None,placed_sensors=EXAMPLE_PLACED_SENSORS)
+
+# Serves an example result from the optimisation algorithm (used for fast testing only)
+@router.get("/opt-placement-example")
+def run_fill_operation():
+    return EXAMPLE_OPTIMISED_PLACEMENT_GEOJSON
