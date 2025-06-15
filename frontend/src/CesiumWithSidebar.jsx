@@ -3,17 +3,18 @@ import {
     Cartesian2,
     Cartesian3,
     Color,
-    Viewer,
+    // Viewer,
     GeoJsonDataSource,
     PolygonHierarchy,
     BillboardGraphics,
     VerticalOrigin,
     LabelGraphics,
-    LabelStyle 
+    LabelStyle
 } from 'cesium';
 import { ClipLoader } from 'react-spinners';
-// import * as Cesium from "cesium";
-// import { Viewer, Entity } from "resium";
+import * as Cesium from "cesium";
+import { Viewer, Entity } from "resium";
+// import { Viewer as ResiumViewer, Entity } from 'resium';
 
 const ENTITY_COLOR_MAP = {
     A: Color.RED.withAlpha(0.5),
@@ -33,33 +34,49 @@ export default function CesiumWithSidebar() {
     const [isCalculating, setIsCalculating] = useState(false);
 
     // Drawing Polygons
+    const resiumViewerRef = useRef(null);
     const [currentPositions, setCurrentPositions] = useState([]);
     const [allPolygons, setAllPolygons] = useState([]);
     const [drawing, setDrawing] = useState(false);
     const [handler, setHandler] = useState(null);
 
-    useEffect(() => {
-        const viewer = new Viewer(containerRef.current, {
-            shouldAnimate: true,
-            baseLayerPicker: false,
-            timeline: false,
-        });
-        viewerRef.current = viewer;
-        // Set initial camera view
-        viewerRef.current.camera.setView({
-            destination: Cartesian3.fromDegrees(-10.1, 66.9, 10000000.0) // [lon, lat, height in meters]
-        });
+    // useEffect(() => {
+    //     const viewer = new Viewer(containerRef.current, {
+    //         shouldAnimate: true,
+    //         baseLayerPicker: false,
+    //         timeline: false,
+    //     });
+    //     viewerRef.current = viewer;
+    //     // Set initial camera view
+    //     viewerRef.current.camera.setView({
+    //         destination: Cartesian3.fromDegrees(-10.1, 66.9, 10000000.0) // [lon, lat, height in meters]
+    //     });
 
+    //     // Fetch list of geojsons
+    //     fetch("http://localhost:8000/geojson-names")
+    //         .then(res => res.json())
+    //         .then(setGeojsonList);
+
+    //     return () => viewer.destroy();
+    // }, []);
+
+    useEffect(() => {
         // Fetch list of geojsons
         fetch("http://localhost:8000/geojson-names")
             .then(res => res.json())
             .then(setGeojsonList);
-
-        return () => viewer.destroy();
     }, []);
 
+    useEffect(() => {
+        if (viewerRef.current && viewerRef.current.cesiumElement) {
+            viewerRef.current.cesiumElement.camera.setView({
+                destination: Cartesian3.fromDegrees(-10.1, 66.9, 10000000.0),
+            });
+        }
+    }, [viewerRef.current]);
+
     // Drawing Polygons
-   const startDrawing = () => {
+    const startDrawing = () => {
         if (!viewerRef.current) return;
         const viewer = viewerRef.current.cesiumElement;
 
@@ -123,6 +140,86 @@ export default function CesiumWithSidebar() {
         setCurrentPositions([]);
     };
 
+    const sendAllPolygons = async () => {
+        if (allPolygons.length === 0) {
+            alert("No polygons to send.");
+            return;
+        }
+
+        const features = allPolygons.map((positions) => {
+            const coordinates = positions.map(pos => {
+                const cartographic = Cesium.Cartographic.fromCartesian(pos);
+                return [
+                    Cesium.Math.toDegrees(cartographic.longitude),
+                    Cesium.Math.toDegrees(cartographic.latitude),
+                ];
+            });
+            // Close polygon ring by repeating first coordinate at end
+            coordinates.push(coordinates[0]);
+
+            return {
+                type: "Feature",
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [coordinates],
+                },
+                properties: {},
+            };
+        });
+
+        const featureCollection = {
+            type: "FeatureCollection",
+            features: features,
+        };
+
+        try {
+            const response = await fetch("http://localhost:8000/test-draw", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(featureCollection),
+            });
+            const result = await response.json();
+            console.log("Backend result:", result);
+        } catch (err) {
+            console.error("Failed to send polygons to backend:", err);
+        }
+    };
+
+    // const sendDrawingToBackend = async () => {
+    //     // Send it to the backend
+    //     const coordinates = currentPositions.map(pos => {
+    //         const cartographic = Cesium.Cartographic.fromCartesian(pos);
+    //         return [
+    //             Cesium.Math.toDegrees(cartographic.longitude),
+    //             Cesium.Math.toDegrees(cartographic.latitude)
+    //         ];
+    //     });
+
+    //     const geojson = {
+    //         type: "Feature",
+    //         geometry: {
+    //             type: "Polygon",
+    //             coordinates: [[...coordinates, coordinates[0]]]
+    //         },
+    //         properties: {}
+    //     };
+
+    //     try {
+    //         const response = await fetch("http://localhost:8000/test-draw", {
+    //             method: "POST",
+    //             headers: { "Content-Type": "application/json" },
+    //             body: JSON.stringify(geojson)
+    //         });
+    //         const result = await response.json();
+    //         console.log("Backend result:", result);
+    //     } catch (err) {
+    //         console.error("Failed to send to backend:", err);
+    //     }
+
+    //     // Reset current drawing
+    //     setCurrentPositions([]);
+    // };
+
     const resetAll = () => {
         handler?.destroy();
         setHandler(null);
@@ -136,7 +233,7 @@ export default function CesiumWithSidebar() {
 
         // Clear previous layer
         if (dataSourceRef.current) {
-            viewerRef.current.dataSources.remove(dataSourceRef.current);
+            viewerRef.current.cesiumElement.dataSources.remove(dataSourceRef.current);
         }
 
         // Load selected GeoJSON
@@ -147,7 +244,7 @@ export default function CesiumWithSidebar() {
             strokeWidth: 2,
         });
 
-        viewerRef.current.dataSources.add(ds);
+        viewerRef.current.cesiumElement.dataSources.add(ds);
         // viewerRef.current.zoomTo(ds);
         dataSourceRef.current = ds;
     };
@@ -177,7 +274,7 @@ export default function CesiumWithSidebar() {
                 entity.polygon.outlineColor = Color.BLACK;
             }
 
-            viewerRef.current.dataSources.add(ds);
+            viewerRef.current.cesiumElement.dataSources.add(ds);
             // viewerRef.current.zoomTo(ds);
             fillDataSourceRef.current = ds;
         } catch (error) {
@@ -192,7 +289,7 @@ export default function CesiumWithSidebar() {
         try {
             // Clear previous fill result if needed
             if (fillDataSourceRef.current) {
-                viewerRef.current.dataSources.remove(fillDataSourceRef.current);
+                viewerRef.current.cesiumElement.dataSources.remove(fillDataSourceRef.current);
             }
 
             const res = await fetch('http://localhost:8000/opt-area');
@@ -233,11 +330,11 @@ export default function CesiumWithSidebar() {
                         backgroundColor: Color.BLACK.withAlpha(0.5),
                     });
                 }
-    
+
             }
 
-            viewerRef.current.dataSources.add(ds);
-            viewerRef.current.zoomTo(ds);
+            viewerRef.current.cesiumElement.dataSources.add(ds);
+            // viewerRef.current.zoomTo(ds);
             fillDataSourceRef.current = ds;
         } catch (error) {
             console.error("Error during fill:", error);
@@ -278,12 +375,8 @@ export default function CesiumWithSidebar() {
                     Load
                 </button>
 
-                <div 
+                <div
                     style={{
-                        // position: "absolute",
-                        // top: "20px",
-                        // left: "20px",
-                        // zIndex: 10,
                         backgroundColor: "white",
                         padding: "10px",
                         borderRadius: "6px",
@@ -314,7 +407,7 @@ export default function CesiumWithSidebar() {
                     )}
                 </button>
 
-                <button style={{ width: '100%', marginBottom: '0.5rem' }}>
+                <button onClick={sendAllPolygons} style={{ width: '100%', marginBottom: '0.5rem' }}>
                     placeholder 1
                 </button>
 
@@ -324,6 +417,61 @@ export default function CesiumWithSidebar() {
 
                 <button style={{ width: '100%' }}>placeholder 3</button>
             </div>
+
+            <Viewer full ref={viewerRef} shouldAnimate baseLayerPicker={false} timeline={false}>
+                {/* All previously finished polygons */}
+                {allPolygons.map((poly, i) => (
+                    <div key={`poly-wrapper-${i}`}>
+                        <Entity
+                            key={`poly-${i}`}
+                            polygon={{
+                                hierarchy: poly,
+                                material: Cesium.Color.CYAN.withAlpha(0.5),
+                            }}
+                        />
+                        <Entity
+                            key={`poly-line-${i}`}
+                            polyline={{
+                                positions: [...poly, poly[0]], // close the loop
+                                width: 2,
+                                material: Cesium.Color.YELLOW,
+                            }}
+                        />
+                    </div>
+                ))}
+
+
+                {/* In-progress polygon */}
+                {currentPositions.length >= 3 && (
+                    <Entity
+                        polygon={{
+                            hierarchy: currentPositions,
+                            material: Cesium.Color.YELLOW.withAlpha(0.3),
+                        }}
+                    />
+                )}
+
+                {/* In-progress lines */}
+                {currentPositions.length >= 2 && (
+                    <Entity
+                        polyline={{
+                            positions: currentPositions,
+                            width: 2,
+                            material: Cesium.Color.YELLOW,
+                        }}
+                    />
+                )}
+
+                {/* Drawn points */}
+                {currentPositions.map((pos, idx) => (
+                    <Entity
+                        key={`pt-${idx}`}
+                        position={pos}
+                        point={{ pixelSize: 8, color: Cesium.Color.RED }}
+                    />
+                ))}
+            </Viewer>
+
         </div>
     );
 }

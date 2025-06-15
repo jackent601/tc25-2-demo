@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse, JSONResponse
 import os, json, time
 import geopandas as gpd
 from shape_optimisations.shape_optimisations import geoJsonDemo
+from shape_optimisations import georouter
 
 app = FastAPI()
 
@@ -14,6 +15,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(georouter.router)
 
 GEOJSON_DIR = "geojson/areas"
 
