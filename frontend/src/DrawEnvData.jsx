@@ -30,6 +30,7 @@ export default function DrawEnvData() {
         fetch("http://localhost:8000/available-depths")
             .then(res => res.json())
             .then(data => {
+                console.log("Available depths:", data);
                 setDepthOptions(data);
                 if (data.length > 0) setDepth(data[0]); // default to first depth
             })
@@ -39,9 +40,13 @@ export default function DrawEnvData() {
     // Fetch GeoJSON when depth changes
     useEffect(() => {
         if (depth === null) return;
+        console.log("Fetching GeoJSON for depth:", depth);
         fetch(`http://localhost:8000/points-geojson?depth=${depth}`)
             .then(res => res.json())
-            .then(data => setGeoData(JSON.parse(data)))
+            .then(data => {
+                console.log("GeoJSON data:", data);
+                setGeoData(data); // no JSON.parse needed
+            })
             .catch(err => console.error("Failed to load GeoJSON:", err));
     }, [depth]);
 
@@ -49,7 +54,7 @@ export default function DrawEnvData() {
     const { minSo, maxSo } = useMemo(() => {
         if (!geoData) return { minSo: 0, maxSo: 1 };
         const soValues = geoData.features
-            .map(f => f.properties.so)
+            .map(f => f.properties?.so)
             .filter(v => typeof v === "number");
         return {
             minSo: computePercentiles(soValues, 10),
@@ -80,9 +85,13 @@ export default function DrawEnvData() {
             </div>
 
             <Viewer full ref={viewerRef}>
-                {geoData?.features.map((feature, idx) => {
-                    const [lon, lat] = feature.geometry.coordinates;
-                    const so = feature.properties.so ?? 0;
+                {geoData?.features?.length > 0 && geoData.features.map((feature, idx) => {
+                    const coords = feature.geometry?.coordinates;
+                    const so = feature.properties?.so;
+
+                    if (!coords || coords.length < 2 || typeof so !== "number") return null;
+
+                    const [lon, lat] = coords;
                     const position = Cesium.Cartesian3.fromDegrees(lon, lat);
                     const color = getColorFromValue(so, minSo, maxSo);
 
@@ -99,6 +108,12 @@ export default function DrawEnvData() {
                     );
                 })}
             </Viewer>
+
+            {geoData === null && (
+                <div style={{ position: "absolute", top: 80, left: 20, zIndex: 10 }}>
+                    <p>Loading data or no data available...</p>
+                </div>
+            )}
         </>
     );
 }
