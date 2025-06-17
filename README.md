@@ -1,5 +1,15 @@
 # Desc
 
+A simple UI (react, vite, cesium) frontend and backend 'engine' (python, fastAPI) to visualise geo-data and run some calculations for given sets of geo-data
+
+UI:
+
+![image](./ui-grab.png)
+
+Tech-stack:
+
+![image](./tech-stack.png)
+
 # Requirements
 
 - docker
