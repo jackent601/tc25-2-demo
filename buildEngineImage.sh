@@ -1,1 +1,2 @@
-docker build -t engine -f ./engine/Dockerfile ./engine
+#!/bin/bash
+docker build -t tc25-2-engine -f ./engine/Dockerfile ./engine
