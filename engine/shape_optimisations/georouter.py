@@ -30,6 +30,8 @@ def geojson_to_multipolygon(geojson):
 
     return MultiPolygon([(p.exterior.coords[:], []) for p in polygons])
 
+# azimuths = [0.0, 22.5, 45.0, 67.5, 90.0, 112.5, 135.0, 157.5, 180.0, 202.5, 225.0, 247.5, 270.0, 292.5, 315.0, 337.5]
+
 azimuths = [0.0, 22.5, 45.0, 67.5, 90.0, 112.5, 135.0, 157.5, 180.0, 202.5, 225.0, 247.5, 270.0, 292.5, 315.0, 337.5]
 configurations=[]
 for a in azimuths:
@@ -38,13 +40,6 @@ for a in azimuths:
             'azimuth_degree': a,
             'fan_degree': 50,
             'range_km': 130,
-        } 
-    )
-    configurations.append(    
-        {
-            'azimuth_degree': a,
-            'fan_degree': 90,
-            'range_km': 100,
         } 
     )
     configurations.append(    
@@ -173,7 +168,7 @@ def export_to_geojson(filename, op_area, placed_sensors):
 def calculateOptimise(AOO):
     # --- Step 2: Define problem parameters ---
 
-    locations = get_grid_points_in_polygon_km(AOO, 30)
+    locations = get_grid_points_in_polygon_km(AOO, 60)
     num_locations = len(locations)
     num_configs = len(configurations)
     max_sensors = 99
