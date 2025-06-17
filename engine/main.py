@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 import os, json, time
 import geopandas as gpd
-from shape_optimisations.shape_optimisations import geoJsonDemo
+# from shape_optimisations.shape_optimisations import geoJsonDemo
+from shape_optimisations import georouter
 
 app = FastAPI()
 
@@ -15,13 +16,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(georouter.router)
+
 GEOJSON_DIR = "geojson/areas"
 
+# returns named of pre-loaded AOOs
 @app.get("/geojson-names")
 def list_geojson_files():
     files = [f for f in os.listdir(GEOJSON_DIR) if f.endswith(".geojson")]
     return [os.path.splitext(f)[0] for f in files]  # return names without extension
 
+# returns geojson of pre-loaded AOOs
 @app.get("/geojson")
 def get_geojson(name: str):
     path = os.path.join(GEOJSON_DIR, f"{name}.geojson")
@@ -29,19 +34,16 @@ def get_geojson(name: str):
         raise HTTPException(status_code=404, detail="GeoJSON not found")
     return FileResponse(path, media_type="application/geo+json")
     
-    
-@app.get("/fill")
+# example of returning polygons that can be coloured using arbitrary attributes
+@app.get("/coloured-polygons")
 def run_fill_operation():
     time.sleep(2)
-    path = os.path.join("geojson", "lookup_mocks", "exampleFill.geojson")
+    path = os.path.join("geojson", "lookup_mocks", "exampleColouredPolygons.geojson")
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="GeoJSON not found")
     return FileResponse(path, media_type="application/geo+json")
 
-@app.get("/opt-area")
-def run_fill_operation():
-    return geoJsonDemo
-
+# Serves an example polygon to be consumed by UI (not currently used)
 @app.get("/polygon")
 def get_polygon():
     return {
@@ -104,142 +106,3 @@ def get_polygon():
                     ]
                 ]
     }
-
-# Below is an exmaple of constructing geoJson on the fly
-# @app.get("/fill")
-# def run_fill_operation():
-#     # Your fill logic here — we'll mock it for now
-#     time.sleep(2)
-#     gdf = gpd.GeoDataFrame.from_features([
-#         {
-#             "type": "Feature",
-#             "geometry": {
-#                 "type": "Polygon",
-#                 "coordinates": [
-#                 [
-#                     [
-#                         -16.164440535249298,
-#                         64.69872960838514
-#                     ],
-#                     [
-#                         -15.858403267285105,
-#                         63.221264545144756
-#                     ],
-#                     [
-#                         -13.899764752314262,
-#                         62.88844410688576
-#                     ],
-#                     [
-#                         -10.472147351115277,
-#                         63.083051465158
-#                     ],
-#                     [
-#                         -9.860072815186886,
-#                         64.72487569309396
-#                     ],
-#                     [
-#                         -10.594562258300948,
-#                         65.64946895759081
-#                     ],
-#                     [
-#                         -14.083387113092776,
-#                         65.64946895759081
-#                     ],
-#                     [
-#                         -16.164440535249298,
-#                         64.69872960838514
-#                     ]
-#                 ]
-#             ]
-#             },
-#             "properties": {"entity": "A"},
-#         },
-#         {
-#             "type": "Feature",
-#             "geometry": {
-#                 "type": "Polygon",
-#                 "coordinates": [
-#                 [
-#                     [
-#                         -17.082552339141888,
-#                         67.5681039580388
-#                     ],
-#                     [
-#                         -17.14375979273472,
-#                         66.19877135922313
-#                     ],
-#                     [
-#                         -13.838557298721417,
-#                         66.59091288020021
-#                     ],
-#                     [
-#                         -9.492828093629846,
-#                         67.73103093163358
-#                     ],
-#                     [
-#                         -12.124748598121926,
-#                         68.46162937010239
-#                     ],
-#                     [
-#                         -16.89892997836337,
-#                         68.57370435143335
-#                     ],
-#                     [
-#                         -17.082552339141888,
-#                         67.5681039580388
-#                     ]
-#                 ]
-#             ]
-#             },
-#             "properties": {"entity": "B"},
-#         },
-# {
-#             "type": "Feature",
-#             "geometry": {
-#                 "type": "Polygon",
-#                 "coordinates": [
-#                 [
-#                     [
-#                         -25.590388388546508,
-#                         64.17047730084163
-#                     ],
-#                     [
-#                         -22.34639334812605,
-#                         63.79460683484652
-#                     ],
-#                     [
-#                         -19.224813214891252,
-#                         64.67255825970655
-#                     ],
-#                     [
-#                         -18.61273867896286,
-#                         66.00038770332645
-#                     ],
-#                     [
-#                         -20.87741446189791,
-#                         67.28616785862803
-#                     ],
-#                     [
-#                         -24.672276584653932,
-#                         66.88100975463487
-#                     ],
-#                     [
-#                         -24.855898945432447,
-#                         66.76055114119285
-#                     ],
-#                     [
-#                         -26.32487783166058,
-#                         65.31930639840047
-#                     ],
-#                     [
-#                         -25.590388388546508,
-#                         64.17047730084163
-#                     ]
-#                 ]
-#             ]
-#             },
-#             "properties": {"entity": "C"},
-#         },
-#     ], crs="EPSG:4326")
-
-#     return JSONResponse(content=json.loads(gdf.to_json()))
